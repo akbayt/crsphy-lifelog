@@ -86,7 +86,7 @@ repository can be used with any model.
 
 ### 4.2 What is not in the repository
 
-- Raw data, audio, photos, and derived data. They are in object storage, see section 5.2.
+- Raw data, audio, photos, and derived data. They are in encrypted storage, see sections 5.2 and 5.3.
 
 Thus the repository can become public later without a data leak.
 
