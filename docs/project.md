@@ -86,7 +86,7 @@ repository can be used with any model.
 
 ### 4.2 What is not in the repository
 
-- Raw data, audio, photos, and derived data. They are in a separate data folder.
+- Raw data, audio, photos, and derived data. They are in object storage, see section 5.2.
 
 Thus the repository can become public later without a data leak.
 
@@ -124,19 +124,40 @@ separate.
 - Each event stores the time in UTC and the local time zone.
 - Only the components combine the data of different devices.
 
-### 5.2 Collection and transport
+### 5.2 Storage and transport
 
-1. Each device writes to its own local files first, one file for each day. Audio and photos are
-   separate files, and an event points to each file.
-2. One computer is the **home store**: the computer that runs the local models.
-3. A file sync tool copies the files to the home store, directly between my devices, without a
-   cloud. Proposal: Syncthing.
-4. The home store loads the files into one local database. Proposal: DuckDB or SQLite.
+The storage and the computer that runs the models are separate. Thus each device can reach the
+data, and the model computer can change.
 
-Folder layout: `raw/<device ID>/<source>/<date>`.
+```
+phone ──┐
+laptop 1 ┼─► encrypt ─► object storage (R2) ─► model computer
+laptop 2 ┘   on device   raw/ imports/ derived/   local cache, decrypts, processes
+```
 
-With this layout, a device continues to record when the home store is off, no server must be
-written, and a new device gets only a new ID and a new folder.
+1. **Each device writes to its own local files first,** one file for each day. Audio and photos
+   are separate files, and an event points to each file. Recording continues without a network.
+2. **Each device encrypts the files before upload.** The key stays on my devices. The storage
+   provider cannot read the data.
+3. **Each device uploads to object storage** over HTTPS. Proposal: Cloudflare R2, because it has
+   no fee to download data, and the model computer downloads often.
+4. **The model computer downloads what it needs,** decrypts it into a local cache, runs the
+   components, and uploads the encrypted derived data.
+5. **Raw objects are only added, never changed or deleted.** Each device has its own access key.
+
+Object layout:
+
+```
+raw/<device ID>/<source>/<date>/      events, audio, photos
+imports/<source>/<date>/              Takeout, Samsung Health, Timeline exports
+derived/                              output of the components
+```
+
+The repository points to the storage with settings: the bucket, the access key, and the
+location of the encryption key. No setting with a secret is committed.
+
+**Backup.** Object storage is not a backup. A second copy of `raw/` and `imports/` is kept in a
+different place, for example an external disk, and updated each week.
 
 ### 5.3 Event format
 
