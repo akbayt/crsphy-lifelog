@@ -5,7 +5,8 @@ brief: >-
   interpret cognitive awareness. Be very careful: a parallel activity such as a phone call can
   make a value look low, and that must not cause a negative result.
 date: 2026-11-20
-status: open
+status: promoted
+promoted_to: docs/project.md, section 6.2
 ---
 
 # Typing, writing, and reading speed as signals of cognitive state

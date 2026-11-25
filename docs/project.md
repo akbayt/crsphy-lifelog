@@ -162,8 +162,8 @@ value that can change without notice.
 
 | Source | Phase | How | Raw data | Derived parameters |
 |---|---|---|---|---|
-| Phone usage | 1 | Phone app | App in front, screen on and off, unlocks, notifications | screen time per day, screen time after 22:00, last screen-off before sleep, night pickups, time per app category, video time at night |
-| Computer usage | 1 | Computer collector | Active app and window, keyboard and mouse activity, idle periods | active time, deep-work minutes, longest focus block, switch rate, typing speed, correction rate, work start and end, activity type *(AI)* |
+| Phone usage | 1 | Phone app | App in front, screen on and off, unlocks, notifications, call state | screen time per day, screen time after 22:00, last screen-off before sleep, night pickups, time per app category, video time at night |
+| Computer usage | 1 | Computer collector | Active app and window, keyboard and mouse activity, idle periods, microphone in use, keyboard layout, quantity of visible text | active time, deep-work minutes, longest focus block, switch rate, typing speed, correction rate, writing speed, pauses in writing, reading speed, work start and end, activity type *(AI)* |
 | Watch | 1 | Samsung Health, Health Connect, phone app | Heart rate, sleep sessions, steps, exercise, blood oxygen, skin temperature | sleep duration, sleep start and end, sleep regularity, resting heart rate, steps, exercise minutes, sleep stages *(vendor)*, heart rate variability *(vendor)* |
 | Meetings | 1 | Meeting recorder, local transcription | Audio of all speakers, transcript with speaker and time, context: meeting type, language, number of speakers, my role | speech rate, pause length, filler rate, talk share, conversation evaluation *(AI)*, change across 15-minute segments |
 | Food and intakes | 1 | Phone app, photo and one tap | Meal photo with time, taps for caffeine, alcohol, supplements, water | foods and ingredients *(AI)*, rough portion *(AI)*, meal times, eating window, caffeine after 14:00, alcohol units, supplements taken |
@@ -193,6 +193,32 @@ To make the evaluation stable:
 - The audio features (pauses, speech rate) are added, because a transcript does not have them.
 - One tap after a meeting, "Was I sharp?", and the short cognitive tests, are the references.
 
+### 6.2 Typing, writing, and reading speed
+
+Typing speed, writing speed, and reading speed during normal work show cognitive awareness.
+They add to the conversation evaluation, and they come from the computer collector.
+
+| Parameter | How it is calculated |
+|---|---|
+| typing speed | Keys per minute in continuous typing |
+| correction rate | Share of delete keys in typing |
+| writing speed | Words per minute of new text in writing apps |
+| pauses in writing | Length of pauses before sentences and inside words |
+| reading speed | Visible text divided by the time on it, in long text |
+
+These values can be misleading. I can do other things at the same time, for example a phone
+call. A parallel activity must not cause a negative result. Thus:
+
+1. **Only valid windows are measured.** A window is valid when the work is continuous in one
+   app, no call or meeting is active, and the app switches are few.
+2. **A window that is not valid is "not measured".** It is missing data, never a low value.
+3. **Parallel activity is detected from the other sources:** call state on the phone,
+   microphone in use on the computer, the meeting recorder, and the phone screen.
+4. **A value is compared only with my own values in the same context:** the same device, app
+   type, language, and keyboard.
+5. **The daily value is the median of many windows,** not a single value.
+6. **Pasted text, autocompletion, and code are separate** from typed prose.
+
 ## 7. The daily state
 
 One record for each day. The research agent looks for links from the inputs to the state, with
@@ -204,6 +230,7 @@ a delay of 0 to 72 hours.
 | meal times | sleep regularity |
 | caffeine | deep-work minutes |
 | alcohol | switch rate |
+| | typing, writing, and reading speed |
 | supplements | conversation evaluation *(AI)* |
 | screen time at night | mood |
 | exercise | energy |
@@ -280,6 +307,7 @@ body and my day is recorded, and the research agent examines it without a fixed 
 | A collector stops without notice | Collector monitor |
 | Raw data is lost | Backup of the raw data; it cannot be collected again |
 | Changes in light make the face photo useless | Same time, place, and light each day |
+| A parallel activity makes a speed look low | Valid windows only; a window that is not valid is missing data |
 
 ## 12. Open decisions
 
