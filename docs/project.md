@@ -131,39 +131,66 @@ data, and the model computer can change.
 
 ```
 phone ──┐
-laptop 1 ┼─► encrypt ─► object storage (R2) ─► model computer
-laptop 2 ┘   on device   raw/ imports/ derived/   local cache, decrypts, processes
+laptop 1 ┼─► encrypt ─► Google Drive (5 TB) ◄─► model computer
+laptop 2 ┘   on device   raw/ imports/ derived/   local cache, DuckDB, models
 ```
 
-1. **Each device writes to its own local files first,** one file for each day. Audio and photos
-   are separate files, and an event points to each file. Recording continues without a network.
-2. **Each device encrypts the files before upload.** The key stays on my devices. The storage
-   provider cannot read the data.
-3. **Each device uploads to object storage** over HTTPS. Proposal: Cloudflare R2, because it has
-   no fee to download data, and the model computer downloads often.
+1. **Each device writes to its own local files first,** one file for each day and source.
+   Audio and photos are separate files, and an event points to each file. Recording continues
+   without a network.
+2. **Each device encrypts the files before upload,** with rclone in crypt mode. The key stays on
+   my devices. Google sees only encrypted files.
+3. **Each device uploads to Google Drive.** Scheduled Takeout exports also arrive in Drive, so
+   the importers find them there.
 4. **The model computer downloads what it needs,** decrypts it into a local cache, runs the
    components, and uploads the encrypted derived data.
-5. **Raw objects are only added, never changed or deleted.** Each device has its own access key.
+5. **Raw objects are only added, never changed or deleted.**
 
-Object layout:
+Layout in Drive:
 
 ```
 raw/<device ID>/<source>/<date>/      events, audio, photos
 imports/<source>/<date>/              Takeout, Samsung Health, Timeline exports
-derived/                              output of the components
+derived/                              output of the components, see below
 ```
 
-The repository points to the storage with settings: the bucket, the access key, and the
-location of the encryption key. No setting with a secret is committed.
+The repository points to the storage with settings: the rclone remote and the location of the
+encryption key. No setting with a secret is committed.
 
-**Backup.** Object storage is not a backup. A second copy of `raw/` and `imports/` is kept in a
-different place, for example an external disk, and updated each week.
+**Backup.** Drive is not a backup. A second copy of `raw/` and `imports/` is kept in a different
+place, for example an external disk, and updated each week.
 
-### 5.3 Event format
+**Change to object storage** (for example Cloudflare R2) when the video stream starts, or when
+Drive becomes too small. The layout stays the same.
+
+### 5.3 Derived data
+
+Derived data is stored as Parquet files, and analysed with DuckDB on the model computer.
+
+```
+derived/<component>/v<version>/date=<YYYY-MM-DD>/part.parquet
+derived/catalog.parquet               all components, versions, and their status
+```
+
+- **One folder for each component and version.** A new version writes a new folder. The old
+  version stays until the new one is confirmed. Thus a result never changes without a record.
+- **One file for each day.** A new run of one day replaces only that file.
+- **DuckDB reads the Parquet files directly.** It needs no server, and it is fast for the data
+  of one person.
+- **Views give the current version of each component.** The research agent queries only these
+  views, through the query tool. It does not read raw data.
+- **The daily state is a view** that joins the components into one row for each day.
+- **Text results stay with their numbers.** The evidence quotes of an AI evaluation are a column
+  next to the score. A search index for meaning can come later, when the agent needs it.
+
+The local cache on the model computer is the working copy. Drive holds the encrypted copy. If
+the model computer changes, the cache is built again from Drive.
+
+### 5.4 Event format
 
 Each event has: start, end, device ID, source, signal, value, unit, confidence.
 
-### 5.4 Component types
+### 5.5 Component types
 
 | Type | Operation | Example |
 |---|---|---|
